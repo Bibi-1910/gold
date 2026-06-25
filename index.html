@@ -92,6 +92,17 @@
   .card.feature{border-color: rgba(212,168,75,0.35);}
   .card.feature .k-label{color:var(--gold);}
 
+  .chart-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:20px 20px 14px; margin-bottom:18px;
+  }
+  .chart-card .chart-head{display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:4px;}
+  .chart-card .chart-title{font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint);}
+  .chart-card .chart-now{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold-bright);}
+  .chart-card canvas{width:100%; height:160px; display:block; margin-top:8px;}
+  .chart-card .chart-note{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); margin-top:6px; line-height:1.6;}
+  .chart-card .chart-empty{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-faint); text-align:center; padding:36px 0;}
+
   table{width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
   thead th{
     text-align:left; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase;
@@ -158,6 +169,16 @@
     </div>
   </div>
 
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">USD Gold Price · XAU / oz</div>
+      <div class="chart-now" id="chartNow">—</div>
+    </div>
+    <canvas id="usdChart"></canvas>
+    <div id="chartEmpty" class="chart-empty">Collecting price history — check back after a few refreshes.</div>
+    <div class="chart-note">Built from your own live readings (saved locally in this browser), since the free price feed doesn't include historical data. Grows over time the longer you keep reopening this page.</div>
+  </div>
+
   <table>
     <thead>
       <tr><th>Purity</th><th>Per gram</th><th>Per 10g</th><th>Per tola</th></tr>
@@ -196,6 +217,133 @@ const PURITY = { '24K': 1, '22K': 0.916, '18K': 0.75 };
 let unit = 'gram';
 let lastGram24 = null; // INR per gram, 24K
 let prevGram24 = null;
+let lastUsdOz = null;
+
+const HISTORY_KEY = 'goldUsdOzHistory_v1';
+const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // keep 30 days
+const HISTORY_MAX_POINTS = 2000;
+
+function loadHistory(){
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    const cutoff = Date.now() - HISTORY_MAX_AGE_MS;
+    return Array.isArray(arr) ? arr.filter(p => p.t >= cutoff) : [];
+  } catch(e){ return []; }
+}
+
+function saveHistoryPoint(usdOz){
+  let hist = loadHistory();
+  const last = hist[hist.length - 1];
+  // avoid spamming identical back-to-back points within 30s
+  if (!last || Date.now() - last.t > 30000) {
+    hist.push({ t: Date.now(), p: usdOz });
+  } else {
+    last.p = usdOz; // update most recent point instead
+  }
+  if (hist.length > HISTORY_MAX_POINTS) hist = hist.slice(hist.length - HISTORY_MAX_POINTS);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  return hist;
+}
+
+function drawChart(hist){
+  const canvas = document.getElementById('usdChart');
+  const emptyEl = document.getElementById('chartEmpty');
+  if (!hist || hist.length < 2) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  canvas.style.display = 'block';
+  emptyEl.style.display = 'none';
+
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const cssHeight = 160;
+  canvas.width = cssWidth * dpr;
+  canvas.height = cssHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const padL = 6, padR = 6, padT = 14, padB = 18;
+  const w = cssWidth - padL - padR;
+  const h = cssHeight - padT - padB;
+
+  const prices = hist.map(p => p.p);
+  let min = Math.min(...prices), max = Math.max(...prices);
+  if (min === max) { min -= 1; max += 1; }
+  const pad = (max - min) * 0.08;
+  min -= pad; max += pad;
+
+  const tMin = hist[0].t, tMax = hist[hist.length - 1].t;
+  const xFor = (t) => padL + (tMax === tMin ? 0 : (t - tMin) / (tMax - tMin)) * w;
+  const yFor = (p) => padT + h - ((p - min) / (max - min)) * h;
+
+  // gridlines (min/max)
+  ctx.strokeStyle = 'rgba(168,156,135,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT); ctx.lineTo(padL + w, padT);
+  ctx.moveTo(padL, padT + h); ctx.lineTo(padL + w, padT + h);
+  ctx.stroke();
+
+  // area fill
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + h);
+  grad.addColorStop(0, 'rgba(212,168,75,0.28)');
+  grad.addColorStop(1, 'rgba(212,168,75,0.0)');
+  ctx.beginPath();
+  ctx.moveTo(xFor(hist[0].t), yFor(hist[0].p));
+  hist.forEach(p => ctx.lineTo(xFor(p.t), yFor(p.p)));
+  ctx.lineTo(xFor(hist[hist.length-1].t), padT + h);
+  ctx.lineTo(xFor(hist[0].t), padT + h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  ctx.moveTo(xFor(hist[0].t), yFor(hist[0].p));
+  hist.forEach(p => ctx.lineTo(xFor(p.t), yFor(p.p)));
+  ctx.strokeStyle = '#d4a84b';
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // last point dot
+  const lastP = hist[hist.length - 1];
+  ctx.beginPath();
+  ctx.arc(xFor(lastP.t), yFor(lastP.p), 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#f0c878';
+  ctx.fill();
+
+  // labels: min / max price, and time range
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillStyle = '#6e6253';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('$' + max.toFixed(0), padL, padT - 2);
+  ctx.textBaseline = 'top';
+  ctx.fillText('$' + min.toFixed(0), padL, padT + h + 2);
+
+  const fmtTime = (t) => new Date(t).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
+  ctx.textAlign = 'left';
+  ctx.fillText(fmtTime(tMin), padL, cssHeight - 2);
+  ctx.textAlign = 'right';
+  ctx.fillText(fmtTime(tMax), padL + w, cssHeight - 2);
+  ctx.textAlign = 'left';
+}
+
+function recordAndDrawHistory(usdOz){
+  lastUsdOz = usdOz;
+  const hist = saveHistoryPoint(usdOz);
+  document.getElementById('chartNow').textContent = '$' + usdOz.toFixed(2) + ' / oz';
+  drawChart(hist);
+}
+
+window.addEventListener('resize', () => {
+  if (lastUsdOz != null) drawChart(loadHistory());
+});
 
 function fmtINR(n){
   if (n == null || isNaN(n)) return '—';
@@ -288,6 +436,7 @@ async function fetchPrices(){
     lastGram24 = newGram24;
 
     render();
+    recordAndDrawHistory(spotUsdOz);
     document.getElementById('manualFallback').style.display = 'none';
     const now = new Date();
     setStatus(true, 'live · ' + now.toLocaleTimeString('en-IN', {hour12:false}));
@@ -311,6 +460,7 @@ async function useManualPrice(){
     prevGram24 = (lastGram24 != null) ? lastGram24 : newGram24;
     lastGram24 = newGram24;
     render();
+    recordAndDrawHistory(usdOz);
     setStatus(true, 'manual · ' + new Date().toLocaleTimeString('en-IN', {hour12:false}));
     document.getElementById('manualFallback').style.display = 'none';
   } catch (err) {
@@ -328,6 +478,7 @@ document.getElementById('unitToggle').addEventListener('click', (e)=>{
 
 document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
 
+drawChart(loadHistory());
 fetchPrices();
 setInterval(fetchPrices, 60000);
 </script>
