@@ -175,7 +175,7 @@
   </div>
 
   <div class="footnote">
-    Spot price via metals.live · USD→INR via frankfurter.dev<br>
+    Spot price via goldprice.org · USD→INR via frankfurter.dev<br>
     Raw bullion rate — jewellers add making charges, GST &amp; margin on top.<br>
     Auto-refreshes every 60s. For personal reference only, not financial advice.
   </div>
@@ -259,22 +259,20 @@ async function fetchPrices(){
   setStatus(true, 'updating…');
   try {
     const [goldRes, fxRes] = await Promise.all([
-      fetch('https://api.metals.live/v1/spot/gold'),
+      fetch('https://data-asg.goldprice.org/dbXRates/USD'),
       fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR')
     ]);
     if (!goldRes.ok) throw new Error('gold feed unavailable');
     if (!fxRes.ok) throw new Error('fx feed unavailable');
 
-    const goldData = await goldRes.json(); // array of [timestamp, price] entries, USD/oz
+    const goldData = await goldRes.json();
     const fxData = await fxRes.json();
 
-    // last entry is most recent spot price
-    const entries = Array.isArray(goldData) ? goldData : [];
-    const last = entries[entries.length - 1];
-    const prev = entries.length > 1 ? entries[entries.length - 2] : null;
+    const item = goldData.items && goldData.items[0];
+    if (!item) throw new Error('unexpected gold feed shape');
 
-    const spotUsdOz = Array.isArray(last) ? last[1] : (last && last.price);
-    const prevUsdOz = prev ? (Array.isArray(prev) ? prev[1] : prev.price) : spotUsdOz;
+    const spotUsdOz = item.xauPrice;              // current USD/oz
+    const prevUsdOz = item.xauClose || spotUsdOz;  // previous close USD/oz
 
     const usdInr = fxData.rates.INR;
 
