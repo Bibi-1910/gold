@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gold Rate India — Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #15120f;
+    --bg-soft: #1c1814;
+    --panel: #211c17;
+    --line: #322a22;
+    --gold: #d4a84b;
+    --gold-bright: #f0c878;
+    --bronze: #9c6b3e;
+    --ink: #efe7d8;
+    --ink-dim: #a89c87;
+    --ink-faint: #6e6253;
+    --green: #7fae6b;
+    --red: #c46a5e;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,168,75,0.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Fraunces', serif;
+    min-height:100vh;
+    padding:32px 18px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  header{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:28px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:50%;
+    background: conic-gradient(from 220deg, var(--gold-bright), var(--bronze), var(--gold-bright));
+    box-shadow: 0 0 16px rgba(212,168,75,0.4);
+    flex-shrink:0;
+  }
+  .brand h1{font-size:17px; font-weight:600; margin:0; letter-spacing:0.02em; color:var(--ink);}
+  .brand p{margin:0; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); letter-spacing:0.04em; text-transform:uppercase;}
+  .status{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint); text-align:right; line-height:1.6;}
+  .status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px; box-shadow:0 0 6px var(--green);}
+  .status.err .dot{background:var(--red); box-shadow:0 0 6px var(--red);}
+
+  .hero{
+    background: linear-gradient(165deg, var(--bg-soft), var(--panel));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:36px 30px 28px;
+    margin-bottom:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(circle at 85% 15%, rgba(212,168,75,0.14), transparent 55%);
+    pointer-events:none;
+  }
+  .hero .label{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:10px;}
+  .hero .price-row{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  .hero .price{font-size:54px; font-weight:300; font-style:italic; color:var(--ink); line-height:1;}
+  .hero .price sup{font-size:22px; font-style:normal; opacity:0.6; margin-right:4px;}
+  .hero .delta{font-family:'JetBrains Mono',monospace; font-size:14px; padding:4px 10px; border-radius:20px; background:rgba(127,174,107,0.12); color:var(--green);}
+  .hero .delta.neg{background:rgba(196,106,94,0.12); color:var(--red);}
+  .hero .unit-toggle{display:flex; gap:6px; margin-top:20px;}
+  .hero .unit-toggle button{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.04em;
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    padding:7px 14px; border-radius:20px; cursor:pointer; transition:.15s;
+  }
+  .hero .unit-toggle button.active{background:var(--gold); color:#1a1510; border-color:var(--gold); font-weight:600;}
+  .hero .unit-toggle button:hover:not(.active){border-color:var(--gold); color:var(--gold-bright);}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:18px 20px;
+  }
+  .card .k-label{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em;}
+  .card .k-purity{font-size:11px; color:var(--ink-faint); margin-left:6px;}
+  .card .k-price{font-size:26px; font-weight:400; color:var(--ink); margin-top:6px;}
+  .card.feature{border-color: rgba(212,168,75,0.35);}
+  .card.feature .k-label{color:var(--gold);}
+
+  table{width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+  thead th{
+    text-align:left; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--ink-faint); padding:14px 16px; border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:13px 16px; font-size:15px; border-bottom:1px solid var(--line); color:var(--ink);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td.karat{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold-bright);}
+  tbody td.num{font-family:'JetBrains Mono',monospace; text-align:right;}
+
+  .footnote{
+    margin-top:22px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint);
+    line-height:1.7; text-align:center;
+  }
+  .footnote a{color:var(--bronze);}
+  .refresh-btn{
+    display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:12px; padding:9px 16px; border-radius:20px; cursor:pointer;
+  }
+  .refresh-btn:hover{border-color:var(--gold); color:var(--gold-bright);}
+  .refresh-btn.spin svg{animation: spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .center{text-align:center;}
+  .skel{color:var(--ink-faint);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>Gold Rate India</h1>
+        <p>Live spot · 24K / 22K / 18K</p>
+      </div>
+    </div>
+    <div class="status" id="status"><span class="dot"></span>connecting…</div>
+  </header>
+
+  <div class="hero">
+    <div class="label">24 Karat Gold</div>
+    <div class="price-row">
+      <div class="price skel" id="heroPrice"><sup>₹</sup>—,———</div>
+      <div class="delta" id="heroDelta">— %</div>
+    </div>
+    <div class="unit-toggle" id="unitToggle">
+      <button data-unit="gram" class="active">per gram</button>
+      <button data-unit="tengram">per 10g</button>
+      <button data-unit="tola">per tola</button>
+      <button data-unit="oz">per ounce</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card feature">
+      <div class="k-label">22K <span class="k-purity">91.6% pure</span></div>
+      <div class="k-price skel" id="k22">—</div>
+    </div>
+    <div class="card">
+      <div class="k-label">18K <span class="k-purity">75.0% pure</span></div>
+      <div class="k-price skel" id="k18">—</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Purity</th><th>Per gram</th><th>Per 10g</th><th>Per tola</th></tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="4" class="center skel" style="padding:24px;">loading rates…</td></tr>
+    </tbody>
+  </table>
+
+  <div class="center">
+    <button class="refresh-btn" id="refreshBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="footnote">
+    Spot price via metals.live · USD→INR via frankfurter.dev<br>
+    Raw bullion rate — jewellers add making charges, GST &amp; margin on top.<br>
+    Auto-refreshes every 60s. For personal reference only, not financial advice.
+  </div>
+
+</div>
+
+<script>
+const GRAMS_PER_OZ = 31.1034768;
+const TOLA_IN_GRAMS = 11.6638;
+const PURITY = { '24K': 1, '22K': 0.916, '18K': 0.75 };
+
+let unit = 'gram';
+let lastGram24 = null; // INR per gram, 24K
+let prevGram24 = null;
+
+function fmtINR(n){
+  if (n == null || isNaN(n)) return '—';
+  return '₹' + n.toLocaleString('en-IN', {maximumFractionDigits: 0});
+}
+
+function unitValue(perGram, u){
+  switch(u){
+    case 'gram': return perGram;
+    case 'tengram': return perGram * 10;
+    case 'tola': return perGram * TOLA_IN_GRAMS;
+    case 'oz': return perGram * GRAMS_PER_OZ;
+  }
+}
+function unitLabel(u){
+  return { gram:'per gram', tengram:'per 10 grams', tola:'per tola', oz:'per ounce' }[u];
+}
+
+function render(){
+  if (lastGram24 == null) return;
+
+  // Hero (24K, selected unit)
+  const heroVal = unitValue(lastGram24, unit);
+  document.getElementById('heroPrice').innerHTML = '<sup>₹</sup>' + heroVal.toLocaleString('en-IN', {maximumFractionDigits: unit==='oz'?0:0});
+  document.getElementById('heroPrice').classList.remove('skel');
+
+  if (prevGram24 != null && prevGram24 !== 0){
+    const pct = ((lastGram24 - prevGram24) / prevGram24) * 100;
+    const el = document.getElementById('heroDelta');
+    el.textContent = (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct).toFixed(2) + '%';
+    el.classList.toggle('neg', pct < 0);
+  }
+
+  // Cards: 22K / 18K per gram
+  document.getElementById('k22').textContent = fmtINR(lastGram24 * PURITY['22K']) + ' /g';
+  document.getElementById('k18').textContent = fmtINR(lastGram24 * PURITY['18K']) + ' /g';
+  document.getElementById('k22').classList.remove('skel');
+  document.getElementById('k18').classList.remove('skel');
+
+  // Table
+  const rows = Object.entries(PURITY).map(([karat, mult]) => {
+    const g = lastGram24 * mult;
+    return `<tr>
+      <td class="karat">${karat}</td>
+      <td class="num">${fmtINR(g)}</td>
+      <td class="num">${fmtINR(g*10)}</td>
+      <td class="num">${fmtINR(g*TOLA_IN_GRAMS)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tableBody').innerHTML = rows;
+
+  // unit toggle active state
+  document.querySelectorAll('#unitToggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.unit === unit);
+  });
+}
+
+function setStatus(ok, msg){
+  const el = document.getElementById('status');
+  el.classList.toggle('err', !ok);
+  el.innerHTML = '<span class="dot"></span>' + msg;
+}
+
+async function fetchPrices(){
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spin');
+  setStatus(true, 'updating…');
+  try {
+    const [goldRes, fxRes] = await Promise.all([
+      fetch('https://api.metals.live/v1/spot/gold'),
+      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR')
+    ]);
+    if (!goldRes.ok) throw new Error('gold feed unavailable');
+    if (!fxRes.ok) throw new Error('fx feed unavailable');
+
+    const goldData = await goldRes.json(); // array of [timestamp, price] entries, USD/oz
+    const fxData = await fxRes.json();
+
+    // last entry is most recent spot price
+    const entries = Array.isArray(goldData) ? goldData : [];
+    const last = entries[entries.length - 1];
+    const prev = entries.length > 1 ? entries[entries.length - 2] : null;
+
+    const spotUsdOz = Array.isArray(last) ? last[1] : (last && last.price);
+    const prevUsdOz = prev ? (Array.isArray(prev) ? prev[1] : prev.price) : spotUsdOz;
+
+    const usdInr = fxData.rates.INR;
+
+    const newGram24 = (spotUsdOz / GRAMS_PER_OZ) * usdInr;
+    const prevGramCalc = (prevUsdOz / GRAMS_PER_OZ) * usdInr;
+
+    prevGram24 = (lastGram24 != null) ? lastGram24 : prevGramCalc;
+    lastGram24 = newGram24;
+
+    render();
+    const now = new Date();
+    setStatus(true, 'live · ' + now.toLocaleTimeString('en-IN', {hour12:false}));
+  } catch (err) {
+    console.error(err);
+    setStatus(false, 'feed error — retry');
+  } finally {
+    btn.classList.remove('spin');
+  }
+}
+
+document.getElementById('unitToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  unit = btn.dataset.unit;
+  render();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
+
+fetchPrices();
+setInterval(fetchPrices, 60000);
+</script>
+</body>
+</html>
